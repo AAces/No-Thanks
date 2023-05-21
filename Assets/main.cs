@@ -17,9 +17,11 @@ public class main : MonoBehaviour
 
     public TextMeshProUGUI[] playerTokensTexts, playerHandValueTexts;
 
-    public GameObject miscGameObjects;
+    public GameObject miscGameObjects, singleTemplate, stackTemplate;
 
-    public GameObject[] activePlayerIndicators;
+    public GameObject[] activePlayerIndicators, playerHandParents;
+
+    public List<GameObject>[] renderedPlayerHands;
 
     public int cardsRemovedFromPlay;
 
@@ -116,10 +118,12 @@ public class main : MonoBehaviour
         playerHandValues = new int[playerCount];
         playerOwnedCards = new List<int>[playerCount];
         playerTokenCounts = new int[playerCount];
+        renderedPlayerHands = new List<GameObject>[playerCount];
         for(int i = 0; i < playerCount; i++)
         {
-            playerTokenCounts[i] = playerCount == 4 ? 11 : playerCount == 3 ? 11 : playerCount == 2 ? 11 : 11; //TODO: Set intial player token counts
+            playerTokenCounts[i] = 11;
             playerOwnedCards[i] = new List<int>();
+            renderedPlayerHands[i] = new List<GameObject>();
         }
         Debug.Log(playerCount + " players selected.");
         promptFirstPlayer();
@@ -161,13 +165,36 @@ public class main : MonoBehaviour
         playerTokenCounts[activePlayer] += playedTokenCount;
         playedTokenCount = 0;
         drawHand(activePlayer);
-        promptNewFlippedCard();
+        if (cardsRemaining == 1)
+        {
+            aiValueText.text = "";
+            flippedCard = 0;
+            cardsRemaining--;
+            updateText();
+            foreach (var s in activePlayerIndicators)
+            {
+                s.gameObject.SetActive(false);
+            }
+            takeButton.gameObject.SetActive(false);
+            passButton.gameObject.SetActive(false);
+        }
+        else
+        {
+            promptNewFlippedCard();
+        }
     }
 
     void drawHand(int p)
     {
         var cards = playerOwnedCards[p];
         cards.Sort();
+
+        foreach(var v in renderedPlayerHands[p])
+        {
+            Destroy(v);
+        }
+
+        renderedPlayerHands[p].Clear();
 
         List<(int f, int l)> stacks = new List<(int f, int l)>();
         List<int> singles = new List<int>();
@@ -194,16 +221,52 @@ public class main : MonoBehaviour
         foreach(var s in stacks)
         {
             Debug.Log(cardsRemaining + ": Player " + (activePlayer + 1) + " has the run " + s.f + " to " + s.l + ".");
+
+            GameObject newCard = Instantiate(stackTemplate, new Vector3(0, 0, 0), Quaternion.identity);
+            newCard.GetComponent<stack_scr>().setNumbers(s.f, s.l);
+            newCard.GetComponent<stack_scr>().updateNumbers();
+            newCard.transform.SetParent(playerHandParents[p].transform, false);
+
+            renderedPlayerHands[p].Add(newCard);
         }
         foreach (var s in singles)
         {
             Debug.Log(cardsRemaining + ": Player " + (activePlayer + 1) + " has the stand-alone card " + s + ".");
+
+            GameObject newCard = Instantiate(singleTemplate, new Vector3(0,0,0), Quaternion.identity);
+            newCard.GetComponent<single_card_scr>().setNumber(s);
+            newCard.GetComponent<single_card_scr>().updateNumber();
+            newCard.transform.SetParent(playerHandParents[p].transform, false);
+
+            renderedPlayerHands[p].Add(newCard);
+
         }
 
-        //TODO: Actually draw the hand of the player, and make it look good. Maybe use prefabs? Like, a basic card object,
-        //      and a slightly stacked card object where the number on the front is the lowest card in the run and the
-        //      highest card in the run is in the top left corner of the other one. The code above already makes the list of
-        //      stand-alone cards and the list of pairs representing the first and last card in a run.
+        Debug.Log("There should be "+renderedPlayerHands[p].Count+" prefabs.");
+
+        for(var i = 0; i < renderedPlayerHands[p].Count; i++)
+        {
+            var card = renderedPlayerHands[p][i];
+            if (p % 2 == 0)
+            {
+                if (i < 9) {
+                    card.transform.localPosition = new Vector3(i*75,0,0);
+                } else
+                {
+                    card.transform.localPosition = new Vector3((i-9) * 75, p==0?135:-135, 0);
+                }
+            } else
+            {
+                if (i < 5)
+                {
+                    card.transform.localPosition = new Vector3(0, i*-135, 0);
+                }
+                else
+                {
+                    card.transform.localPosition = new Vector3(p == 1 ? 75 : -75, (i-5)*-135, 0);
+                }
+            }
+        }
     }
 
     void pass()
