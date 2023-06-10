@@ -426,12 +426,16 @@ public class main : MonoBehaviour
         }
 
         if (playerOwnedCards.Any(p => p.Contains(card + 1))){
-            if (!playerOwnedCards[activePlayer].Contains(card + 1)) return 0;
+            if (!playerOwnedCards[0].Contains(card + 1)) return 0;
         }
 
-        if (playerOwnedCards.Any(p => p.Contains(card + 2))|| playerOwnedCards.Any(p => p.Contains(card -1)))
+        if (playerOwnedCards.Any(p => p.Contains(card + 2)))
         {
-            if (!playerOwnedCards[activePlayer].Contains(card + 2)) return 1-1/(1+value);
+            if (!playerOwnedCards[0].Contains(card + 2)) return 1-1/(1+value);
+        }
+        
+        if (playerOwnedCards.Any(p => p.Contains(card - 1))){
+            if (!playerOwnedCards[0].Contains(card - 1)) return 1-1/(1+value);
         }
 
         int minima = 0;
