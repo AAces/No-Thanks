@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
@@ -170,6 +171,7 @@ public class main : MonoBehaviour
             aiValueText.text = "";
             flippedCard = 0;
             cardsRemaining--;
+            updateHandValues();
             updateText();
             foreach (var s in activePlayerIndicators)
             {
@@ -237,7 +239,7 @@ public class main : MonoBehaviour
             newCard.GetComponent<single_card_scr>().setNumber(s);
             newCard.GetComponent<single_card_scr>().updateNumber();
             newCard.transform.SetParent(playerHandParents[p].transform, false);
-
+            
             renderedPlayerHands[p].Add(newCard);
 
         }
@@ -266,6 +268,7 @@ public class main : MonoBehaviour
                     card.transform.localPosition = new Vector3(p == 1 ? 75 : -75, (i-5)*-135, 0);
                 }
             }
+            card.SetActive(true);
         }
     }
 
@@ -283,7 +286,7 @@ public class main : MonoBehaviour
         aiValueText.text = "";
         hideGame();
         cardsRemaining--;
-        if (!(cardsRemaining == 32 - cardsRemovedFromPlay))
+        if (cardsRemaining != 32 - cardsRemovedFromPlay)
         {
             for (var i = 0; i < 33; i++)
             {
@@ -331,9 +334,9 @@ public class main : MonoBehaviour
 
         foreach (var s in activePlayerIndicators)
         {
-            s.gameObject.SetActive(false);
+            s.SetActive(false);
         }
-        activePlayerIndicators[activePlayer].gameObject.SetActive(true);
+        activePlayerIndicators[activePlayer].SetActive(true);
 
     }
 
@@ -353,14 +356,15 @@ public class main : MonoBehaviour
         takeButton.gameObject.SetActive(false);
         passButton.gameObject.SetActive(false);
 
+        var valueOfTaking = getValueOfTaking(flippedCard);
+        var valueOfPassing = getValueOfPassing(flippedCard);
+
         if (playerTokenCounts[0] == 0)
         {
+            aiValueText.text = "Must take. Take: " + valueOfTaking.ToString() + ". Pass: " + valueOfPassing.ToString() + ".";
             instruct(takeI);
             return;
         }
-
-        var valueOfTaking = getValueOfTaking(flippedCard);
-        var valueOfPassing = getValueOfPassing(flippedCard);
 
         aiValueText.text = "Take: " + valueOfTaking.ToString() + ". Pass: " + valueOfPassing.ToString() + ".";
 
@@ -395,16 +399,56 @@ public class main : MonoBehaviour
         potentialHand.Add(card);
         var valueWithNewCard = getValueOfHand(potentialHand, tokenCount+playedTokenCount);
         
-        value = valueWithNewCard-currentValue;
+        value = valueWithNewCard - currentValue - (tokenCount < 6 ? 0.75f : (tokenCount < 16 ? 0.5f : 0.25f)) * playedTokenCount;
         
 
         return value;
     }
     float getValueOfPassing(int card)
     {
-        float value = 1;
+        float returnChance = chanceOfReturn(card);
 
-        return value;
+        float value = (-1*playerCount+1+getValueOfTaking(card))* returnChance;
+
+        float risk = 1 - returnChance + (returnChance-1)*getValueOfTaking(card);
+
+
+        return value+risk;
+    }
+
+    float chanceOfReturn(int card)
+    {
+        float value = card - playedTokenCount;
+
+        if (playerTokenCounts.Any(p => p == 0))
+        {
+            return 0;
+        }
+
+        if (playerOwnedCards.Any(p => p.Contains(card + 1))){
+            if (!playerOwnedCards[activePlayer].Contains(card + 1)) return 0;
+        }
+
+        if (playerOwnedCards.Any(p => p.Contains(card + 2))|| playerOwnedCards.Any(p => p.Contains(card -1)))
+        {
+            if (!playerOwnedCards[activePlayer].Contains(card + 2)) return 1-1/(1+value);
+        }
+
+        int minima = 0;
+        int mindex = 0;
+
+        for (int i = 1; i < playerCount; i++)
+        {
+            if (playerTokenCounts[i] <= minima)
+            { minima = playerTokenCounts[i]; mindex = i; }
+        }
+
+        var tempValue = value - mindex;
+
+        if (tempValue <= 1) return 0;
+
+        return 1-1/tempValue;
+
     }
 
     void updateHandValues()
@@ -429,5 +473,4 @@ public class main : MonoBehaviour
 
         return value;
     }
-
 }
