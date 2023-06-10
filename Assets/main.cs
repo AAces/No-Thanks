@@ -166,11 +166,10 @@ public class main : MonoBehaviour
         playerTokenCounts[activePlayer] += playedTokenCount;
         playedTokenCount = 0;
         drawHand(activePlayer);
-        if (cardsRemaining == 1)
+        if (cardsRemaining == 0)
         {
             aiValueText.text = "";
             flippedCard = 0;
-            cardsRemaining--;
             updateHandValues();
             updateText();
             foreach (var s in activePlayerIndicators)
@@ -357,7 +356,7 @@ public class main : MonoBehaviour
         passButton.gameObject.SetActive(false);
 
         var valueOfTaking = getValueOfTaking(flippedCard);
-        var valueOfPassing = getValueOfPassing(flippedCard);
+        var valueOfPassing = getValueOfPassing(flippedCard, valueOfTaking);
 
         if (playerTokenCounts[0] == 0)
         {
@@ -397,20 +396,45 @@ public class main : MonoBehaviour
         var potentialHand = new List<int>();
         potentialHand.AddRange(hand);
         potentialHand.Add(card);
-        var valueWithNewCard = getValueOfHand(potentialHand, tokenCount+playedTokenCount);
-        
-        value = valueWithNewCard - currentValue - (tokenCount < 6 ? 0.75f : (tokenCount < 16 ? 0.5f : 0.25f)) * playedTokenCount;
-        
+
+        var valueWithNewCard = getValueOfHand(potentialHand, tokenCount + playedTokenCount);
+        var risk = false;
+        var riskyValue = 0;
+        var chanceOfSingleCard = 1-cardsRemovedFromPlay / (cardsRemovedFromPlay + cardsRemaining);
+
+        if (hand.Contains(card + 2) && !playerOwnedCards.Any(p=>p.Contains(card+1)))
+        {
+            potentialHand.Add(card+1);
+            risk = true;
+            riskyValue = getValueOfHand(potentialHand, tokenCount + playedTokenCount);
+            Debug.Log("Hand contains card two above. The risky value is " + riskyValue + " and the chance of that card being in the deck is " + chanceOfSingleCard * 100 + "%.");
+        } else if (hand.Contains(card - 2) && !playerOwnedCards.Any(p => p.Contains(card - 1))) {
+            potentialHand.Add(card - 1);
+            risk = true;
+            riskyValue = getValueOfHand(potentialHand, tokenCount + playedTokenCount)+2;
+            Debug.Log("Hand contains card two below. The risky value is " + riskyValue + " and the chance of that card being in the deck is " + chanceOfSingleCard * 100 + "%.");
+
+        }
+
+        var cardValues = (valueWithNewCard - currentValue) * (risk ? 1 - chanceOfSingleCard : 1f) + (riskyValue - currentValue) * (risk ? chanceOfSingleCard : 0f);
+        var tokenValues = (tokenCount < 6 && cardsRemaining>5 ? 0.75f : (tokenCount < 16 && cardsRemaining > 5 ? 0.5f : 0.25f)) * playedTokenCount;
+
+        value = cardValues - tokenValues;
+
+        Debug.Log("Value from card: " + cardValues);
+        Debug.Log("Value from tokens: " + -1*tokenValues);
 
         return value;
     }
-    float getValueOfPassing(int card)
+    float getValueOfPassing(int card, float taking)
     {
         float returnChance = chanceOfReturn(card);
 
-        float value = (-1*playerCount+1+getValueOfTaking(card))* returnChance;
+        Debug.Log("Return chance: " + returnChance * 100 + " %.");
 
-        float risk = 1 - returnChance + (returnChance-1)*getValueOfTaking(card);
+        float value = (-1*playerCount+1+ taking) * returnChance;
+
+        float risk = 1 - returnChance + (returnChance-1)* taking;
 
 
         return value+risk;
@@ -418,7 +442,7 @@ public class main : MonoBehaviour
 
     float chanceOfReturn(int card)
     {
-        float value = card - playedTokenCount;
+        float value = card - 1.25f*playedTokenCount;
 
         if (playerTokenCounts.Any(p => p == 0))
         {
@@ -447,7 +471,7 @@ public class main : MonoBehaviour
             { minima = playerTokenCounts[i]; mindex = i; }
         }
 
-        var tempValue = value - mindex;
+        var tempValue = value - 1.25f*playerCount;
 
         if (tempValue <= 1) return 0;
 
