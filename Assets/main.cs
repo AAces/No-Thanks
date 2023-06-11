@@ -360,12 +360,12 @@ public class main : MonoBehaviour
 
         if (playerTokenCounts[0] == 0)
         {
-            aiValueText.text = "Must take. Take: " + valueOfTaking.ToString() + ". Pass: " + valueOfPassing.ToString() + ".";
+            aiValueText.text = "Must take. Take: " + valueOfTaking.ToString("0.000") + ". Pass: " + valueOfPassing.ToString("0.000") + ".";
             instruct(takeI);
             return;
         }
 
-        aiValueText.text = "Take: " + valueOfTaking.ToString() + ". Pass: " + valueOfPassing.ToString() + ".";
+        aiValueText.text = "Take: " + valueOfTaking.ToString("0.000") + ". Pass: " + valueOfPassing.ToString("0.000") + ".";
 
         if(valueOfPassing < valueOfTaking)
         {
@@ -400,19 +400,22 @@ public class main : MonoBehaviour
         var valueWithNewCard = getValueOfHand(potentialHand, tokenCount + playedTokenCount);
         var risk = false;
         var riskyValue = 0;
-        var chanceOfSingleCard = 1-cardsRemovedFromPlay / (cardsRemovedFromPlay + cardsRemaining);
+        float chanceOfSingleCard = (float)(cardsRemaining)/((float)cardsRemaining+(float)cardsRemovedFromPlay);
+
+        Debug.Log("Cards remaining: " + cardsRemaining + ". Chance of single card: " + (chanceOfSingleCard * 100f).ToString("0.00"));
+
 
         if (hand.Contains(card + 2) && !playerOwnedCards.Any(p=>p.Contains(card+1)))
         {
             potentialHand.Add(card+1);
             risk = true;
             riskyValue = getValueOfHand(potentialHand, tokenCount + playedTokenCount);
-            Debug.Log("Hand contains card two above. The risky value is " + riskyValue + " and the chance of that card being in the deck is " + chanceOfSingleCard * 100 + "%.");
+            Debug.Log("Hand contains card two above. The risky value is " + riskyValue.ToString("0.00") + " and the chance of that card being in the deck is " + (chanceOfSingleCard * 100f).ToString("0.00") + "%."); ;
         } else if (hand.Contains(card - 2) && !playerOwnedCards.Any(p => p.Contains(card - 1))) {
             potentialHand.Add(card - 1);
             risk = true;
             riskyValue = getValueOfHand(potentialHand, tokenCount + playedTokenCount)+2;
-            Debug.Log("Hand contains card two below. The risky value is " + riskyValue + " and the chance of that card being in the deck is " + chanceOfSingleCard * 100 + "%.");
+            Debug.Log("Hand contains card two below. The risky value is " + riskyValue.ToString("0.00") + " and the chance of that card being in the deck is " + (chanceOfSingleCard * 100f).ToString("0.00") + "%.");
 
         }
 
@@ -421,8 +424,8 @@ public class main : MonoBehaviour
 
         value = cardValues - tokenValues;
 
-        Debug.Log("Value from card: " + cardValues);
-        Debug.Log("Value from tokens: " + -1*tokenValues);
+        Debug.Log("Value from card: " + cardValues.ToString("0.00"));
+        Debug.Log("Value from tokens: " + (-1*tokenValues).ToString("0.00"));
 
         return value;
     }
@@ -430,7 +433,7 @@ public class main : MonoBehaviour
     {
         float returnChance = chanceOfReturn(card);
 
-        Debug.Log("Return chance: " + returnChance * 100 + " %.");
+        Debug.Log("Return chance: " + (returnChance * 100f).ToString("0.00") + " %.");
 
         float value = (-1*playerCount+1+ taking) * returnChance;
 
